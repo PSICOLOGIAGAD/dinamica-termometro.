@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termómetro de la Ansiedad Interactiva</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            background-color: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            align-items: center;
+            gap: 40px;
+        }
+
+        /* Estilos del Termómetro */
+        .termometro-container {
+            position: relative;
+            width: 60px;
+            height: 400px;
+            background-color: #e0e0e0;
+            border-radius: 30px;
+            overflow: hidden; /* Para que el fluido no salga */
+            border: 4px solid #333;
+        }
+
+        .fluido {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%; /* Altura inicial */
+            background-color: #4caf50; /* Color inicial (Verde) */
+            transition: height 0.5s ease, background-color 0.5s ease; /* Animación suave [cite: 7] */
+        }
+
+        .burbuja {
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 90px;
+            background-color: #333;
+            border-radius: 50%;
+            z-index: -1; /* Detrás del termómetro */
+        }
+
+        /* Marcas de la escala */
+        .escala {
+            position: absolute;
+            right: -35px;
+            height: 100%;
+            display: flex;
+            flex-direction: column-reverse;
+            justify-content: space-between;
+            padding: 20px 0;
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* Área de controles y descripción */
+        .controles {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 300px;
+        }
+
+        h2 { margin-top: 0; color: #2c3e50; }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .info-box {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #4caf50; /* Color dinámico */
+            transition: border-color 0.5s ease;
+        }
+
+        .nivel-titulo { font-weight: bold; font-size: 1.2em; margin-bottom: 5px; }
+        .nivel-desc { font-style: italic; color: #666; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div style="position: relative;">
+        <div class="termometro-container">
+            <div class="fluido" id="fluido"></div>
+            <div class="escala">
+                <span>10</span><span>9</span><span>8</span><span>7</span><span>6</span>
+                <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+        </div>
+        <div class="burbuja"></div>
+    </div>
+
+    <div class="controles">
+        <h2>Nivel de Ansiedad</h2>
+        <input type="range" id="nivelSlider" min="1" max="10" value="1">
+        
+        <div class="info-box" id="infoBox">
+            <div class="nivel-titulo" id="nivelTitulo">Nivel 1: Calma Total</div>
+            <div class="nivel-desc" id="nivelDesc">Relajación profunda, respiración tranquila. Estado ideal.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const slider = document.getElementById('nivelSlider');
+    const fluido = document.getElementById('fluido');
+    const infoBox = document.getElementById('infoBox');
+    const nivelTitulo = document.getElementById('nivelTitulo');
+    const nivelDesc = document.getElementById('nivelDesc');
+
+    // Datos de los niveles (puedes personalizarlos [cite: 9])
+    const nivelesInfo = {
+        1: { titulo: "Nivel 1: Calma Total", desc: "Relajación profunda, respiración tranquila. Estado ideal[cite: 11].", color: "#4caf50" }, // Verde
+        2: { titulo: "Nivel 2: Relax", desc: "Cómodo, sin preocupaciones significativas.", color: "#8bc34a" },
+        3: { titulo: "Nivel 3: Alerta Leve", desc: "Atención enfocada, pequeña tensión muscular.", color: "#cddc39" },
+        4: { titulo: "Nivel 4: Inquietud", desc: "Preocupación menor, respiración ligeramente más rápida.", color: "#ffeb3b" }, // Amarillo
+        5: { titulo: "Nivel 5: Ansiedad Moderada", desc: "Tensión notable, pensamientos acelerados, nerviosismo.", color: "#ffc107" },
+        6: { titulo: "Nivel 6: Estrés Significativo", desc: "Dificultad para concentrarse, palpitaciones leves.", color: "#ff9800" }, // Naranja
+        7: { titulo: "Nivel 7: Ansiedad Alta", desc: "Miedo irracional, sudoración, fuerte tensión.", color: "#ff5722" },
+        8: { titulo: "Nivel 8: Pánico Inminente", desc: "Sensación de pérdida de control, respiración entrecortada.", color: "#f44336" }, // Rojo
+        9: { titulo: "Nivel 9: Ataque de Pánico", desc: "Terror intenso, dolor en el pecho, mareos.", color: "#d32f2f" },
+        10: { titulo: "Nivel 10: Crisis Total", desc: "Desconexión, necesidad de ayuda inmediata[cite: 2].", color: "#b71c1c" }
+    };
+
+    function actualizarTermometro() {
+        const nivel = slider.value;
+        const info = nivelesInfo[nivel];
+
+        // Actualizar altura del fluido (conversión de base 10 a porcentaje)
+        const alturaPorcentaje = (nivel) * 10;
+        fluido.style.height = alturaPorcentaje + '%';
+
+        // Actualizar color del fluido y del borde de la caja de info 
+        fluido.style.backgroundColor = info.color;
+        infoBox.style.borderColor = info.color;
+
+        // Actualizar textos
+        nivelTitulo.innerText = info.titulo;
+        nivelDesc.innerText = info.desc;
+    }
+
+    // Escuchar cambios en el slider
+    slider.addEventListener('input', actualizarTermometro);
+
+    // Inicializar
+    actualizarTermometro();
+
+</script>
+
+</body>
+</html>
